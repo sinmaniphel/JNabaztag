@@ -3,8 +3,27 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.aggelos.nabaztag</groupId>
 	<artifactId>JNabaztag</artifactId>
-	<version>1.0</version>
+	<version>1.0.1</version>
 	<name>Nabaztag API for Java</name>
+	<url>http://sinmaniphel.github.com/JNabaztag/</url>
+	<issueManagement>
+		<system>GitHub</system>
+		<url>https://github.com/sinmaniphel/JNabaztag/issues</url>
+	</issueManagement>
+	<developers>
+		<developer>
+			<id>sinmaniphel</id>
+			<name>Clément Arnoux</name>
+			<email>sinmaniphel + github atdoubidou gmail dawte com</email>
+			<url>http://www.aggelos.org</url>
+			<roles>
+				<role>Lead developper</role>
+			</roles>
+		</developer>
+	</developers>
+	<scm>
+		<url>https://github.com/sinmaniphel/JNabaztag</url>
+	</scm>
 	<build>
 		<plugins>
 			<plugin>
