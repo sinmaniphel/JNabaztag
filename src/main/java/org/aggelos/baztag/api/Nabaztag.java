@@ -5,6 +5,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.LinkedList;
+import java.util.List;
+
+import javax.xml.stream.XMLStreamException;
+
+import org.aggelos.baztag.api.xml.ApiAnswer;
+import org.aggelos.baztag.api.xml.ServiceAnswerParser;
 
 /**
  * The main class for the API. A Nabaztag thing is identified by its serial number and token.
@@ -29,7 +36,9 @@ public class Nabaztag {
 	
 	private String token;
 	
-	private String lastErrorMessage;
+	private ServiceAnswerParser answerParser;
+	
+	private List<ApiAnswer> lastErrors;
 		
 	
 	/**
@@ -41,6 +50,8 @@ public class Nabaztag {
 		super();
 		this.serialNumber = serialNumber;
 		this.token = token;
+		answerParser = new ServiceAnswerParser();
+		
 	}
 	
 	/**
@@ -55,31 +66,39 @@ public class Nabaztag {
 		
 		try {
 			URL url = new URL(fullUrl);
-			BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
-			String line;
-			// TODO : handle returned message
-			// TODO : remove this at the proper time and handle the returned message
-			while ((line = reader.readLine()) != null) {
-			    System.out.println(line);
+			
+			List<ApiAnswer> result = answerParser.parse(url.openStream());
+			if(result.size() == 0) {
+				return true;
 			}
-			reader.close();
-			return true;
+			else {
+				lastErrors = result;
+				return false;
+			}
+		
 		} catch (MalformedURLException e) {
-			lastErrorMessage = e.getMessage();
+			lastErrors = new LinkedList<ApiAnswer>();
+			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
 			return false;
 		} catch (IOException e) {
-			lastErrorMessage = e.getMessage();
+			lastErrors = new LinkedList<ApiAnswer>();
+			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
+			return false;
+		} catch (XMLStreamException e) {
+			lastErrors = new LinkedList<ApiAnswer>();
+			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
 			return false;
 		}
 
 	}
-	
+
+
 	/**
-	 * In case the execution ended poorly, will provide the last error message
+	 * In case the execution ended poorly, will provide the last error messages
 	 * @return the last error message
 	 */
-	public String getLastErrorMessage() {
-		return lastErrorMessage;
+	public List<ApiAnswer> getLastErrors() {
+		return lastErrors;
 	}
 
 	
