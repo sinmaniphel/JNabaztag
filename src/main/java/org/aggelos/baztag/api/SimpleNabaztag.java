@@ -8,9 +8,9 @@ import org.aggelos.baztag.api.parts.Lang;
 
 
 /**
- * 
+ *  A simplified version of the Nabaztag. Here, no more instructions, simple operations, like Say or moveLeftEar
  * @author sinmaniphel
- * A simplified version of the Nabaztag. Here, no more instructions, simple operations, like Say or moveLeftEar
+ *
  *
  */
 public class SimpleNabaztag extends Nabaztag {

@@ -7,8 +7,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 /**
- * 
- * @author sinmaniphel
  * The main class for the API. A Nabaztag thing is identified by its serial number and token.
  * 
  * Pretty straightforward : <code>
@@ -19,6 +17,8 @@ import java.net.URL;
  * if(!result) {
  * return myTag.getLastErrorMessage();
  * }
+ * @author sinmaniphel
+ * 
  */
 public class Nabaztag {
 
