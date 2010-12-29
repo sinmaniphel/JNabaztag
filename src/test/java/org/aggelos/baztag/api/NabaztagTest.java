@@ -1,18 +1,36 @@
 package org.aggelos.baztag.api;
 
+import java.util.List;
+import java.util.ResourceBundle;
+
 import org.aggelos.baztag.api.inst.LeftEarInstruction;
 import org.aggelos.baztag.api.inst.RightEarInstruction;
 import org.aggelos.baztag.api.inst.TextInstruction;
 import org.aggelos.baztag.api.inst.chor.ChoregraphyInstruction;
 import org.aggelos.baztag.api.inst.chor.LedChoregraphyStep;
+import org.aggelos.baztag.api.xml.ApiAnswer;
+import org.aggelos.baztag.api.xml.ApiAnswers;
+
 import static org.aggelos.baztag.api.parts.NabaztagLed.*;
 
 import junit.framework.TestCase;
 
 public class NabaztagTest extends TestCase {
 
+	private Nabaztag tag;
+	
+	
+	@Override
+	protected void setUp() throws Exception {
+		ResourceBundle props = ResourceBundle.getBundle("apitest");
+		String sn = props.getString("test.api.sn");
+		String token = props.getString("test.api.token");
+		tag = new Nabaztag(sn, token);
+	}
+	
 	public void testExecute() {
 		TextInstruction ti = new TextInstruction("je peux écrire un peu ce que je veux");
+		TextInstruction ti2 = new TextInstruction("et même lui faire dire des bétises");
 		ChoregraphyInstruction ci = new ChoregraphyInstruction(1);
 		LeftEarInstruction lei = new LeftEarInstruction((short)10);
 		RightEarInstruction rei = new RightEarInstruction((short)2);
@@ -39,14 +57,22 @@ public class NabaztagTest extends TestCase {
 		
 		
 		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
-		//seq.add(ti);
+		seq.add(ti);
+		seq.add(ti2);
 		seq.add(ci);
 		seq.add(rei);
 		seq.add(lei);
 		
-		Nabaztag tag = new Nabaztag("","" );
-		
-		tag.execute(seq);
+		assertTrue(tag.execute(seq));
+		seq = new NabaztagInstructionSequence();
+		rei = new RightEarInstruction((short)24);
+		seq.add(rei);
+		seq.add(lei);
+		assertFalse(tag.execute(seq));
+		List<ApiAnswer> messages = tag.getLastErrors();
+		assertEquals(1,messages.size());
+		assertEquals(messages.get(0).getAnswertype(), ApiAnswers.EARPOSITIONNOTSENT);
+		System.err.println(messages.get(0).getMessage());
 		
 	}
 
