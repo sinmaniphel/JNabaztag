@@ -75,5 +75,42 @@ public class NabaztagTest extends TestCase {
 		System.err.println(messages.get(0).getMessage());
 		
 	}
+	
+	public void testUpdateStatus() {
+		System.out.println("updating status");
+		boolean update = tag.updateStatus();
+		if(!update) {
+			for(ApiAnswer answer:tag.getLastErrors()) {
+				System.out.println(answer.getMessage());
+			}
+		}
+		assertTrue(update);
+		System.out.println("name : "+tag.getName());
+		System.out.println("version : "+tag.getVersion());
+		System.out.println("signature : "+tag.getSignature());
+		System.out.println("ear positions : "+tag.getLeftEarPos()+" - "+tag.getRightEarPos());
+		
+		System.out.println("\nMessages : ");
+		for(Message m : tag.getMessages()) {
+			System.out.println("\t"+m.getDate()+" - "+m.getTitle()+" from "+m.getFrom()+" at "+m.getUrl());
+		}
+		
+		System.out.println("friends : ");
+		for(String friend:tag.getFriends()) {
+			System.out.println("\t"+friend);
+		}
+	}
+	
+	public void testAwake() {
+		boolean update = tag.updateStatus();
+		if(!update) {
+			for(ApiAnswer answer:tag.getLastErrors()) {
+				System.out.println(answer.getMessage());
+			}
+		}
+		assertTrue(update);
+		boolean awake = tag.isAwake();
+		assertTrue(tag.setAwake(!awake));
+	}
 
 }
