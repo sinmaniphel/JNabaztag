@@ -11,6 +11,7 @@ import java.util.logging.Logger;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.aggelos.baztag.api.inst.WakeUpInstruction;
 import org.aggelos.baztag.api.xml.AnswerParsingException;
 import org.aggelos.baztag.api.xml.ApiAnswer;
 import org.aggelos.baztag.api.xml.ServiceAnswerParser;
@@ -266,26 +267,11 @@ public class Nabaztag {
 	 * @return true if the command executed successfully
 	 */
 	public boolean setAwake(boolean awake) {
-		try {
-			String baseUrl = String.format(this.baseFormat, NABAZTAG_API_URL,serialNumber,token);
-			String action = awake?"14":"13";
-			URL url = new URL(baseUrl+"&action="+action);
-			answerParser.parse(url.openStream());
-			this.awake = awake;
-			return true;
-		} catch (MalformedURLException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		} catch (XMLStreamException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		} catch (IOException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		}
+		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
+		seq.add(new WakeUpInstruction(awake));	
+		this.execute(seq);
+		this.awake = awake;
+		return true;
 	}
 
 	
