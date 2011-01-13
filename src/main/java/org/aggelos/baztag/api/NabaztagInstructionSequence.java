@@ -12,6 +12,7 @@ import java.util.HashSet;
  *
  */
 public class NabaztagInstructionSequence extends HashSet<NabaztagInstruction> {
+	
 
 	/**
 	 * Will convert the instruction sequence in a string of URL parameters
@@ -26,6 +27,11 @@ public class NabaztagInstructionSequence extends HashSet<NabaztagInstruction> {
 			outBuf.append(ni.getParamValue());
 		}
 		return outBuf.toString();
+	}
+	
+	public NabaztagInstructionSequence addInstruction(NabaztagInstruction inst){
+		super.add(inst);
+		return this;
 	}
 	
 }
