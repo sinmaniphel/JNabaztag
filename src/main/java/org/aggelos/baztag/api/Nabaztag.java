@@ -1,16 +1,17 @@
 package org.aggelos.baztag.api;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.aggelos.baztag.api.inst.RetrieveInfoInstruction;
+import org.aggelos.baztag.api.inst.UpdateEarsInstruction;
 import org.aggelos.baztag.api.inst.WakeUpInstruction;
 import org.aggelos.baztag.api.xml.AnswerParsingException;
 import org.aggelos.baztag.api.xml.ApiAnswer;
@@ -73,7 +74,9 @@ public class Nabaztag {
 		super();
 		this.serialNumber = serialNumber;
 		this.token = token;
-		answerParser = new ServiceAnswerParser();
+		answerParser = new ServiceAnswerParser(this);
+		friends = new ArrayList<String>();
+		messages = new ArrayList<Message>();
 		
 	}
 	
@@ -128,88 +131,62 @@ public class Nabaztag {
 	 * a general way to update the whole status of the nabaztag
 	 */
 	public boolean updateStatus() {
-		try {
-			String baseUrl = String.format(this.baseFormat, NABAZTAG_API_URL,serialNumber,token);
 			
-			LOGGER.fine("getting friends");
-			// the action 2 provides the list of friends
-			URL url = new URL(baseUrl+"&action=2");
-			friends = answerParser.parseFriends(url.openStream());
-			
-			LOGGER.fine("getting messages");
-			// the action 3 provides the list of messages
-			url = new URL(baseUrl+"&action=3");
-			messages = answerParser.parseMessages(url.openStream());
-			
-			LOGGER.fine("getting signature");
-			// the action 5 provides the signature
-			url = new URL(baseUrl+"&action=5");
-			signature = answerParser.parseSignature(url.openStream());
-			
-			LOGGER.fine("getting awake state");
-			// the action 7 provides the awake state
-			url = new URL(baseUrl+"&action=7");
-			awake = answerParser.parseAwake(url.openStream());
-			
-			LOGGER.fine("getting version");
-			// the action 8 provides the version
-			url = new URL(baseUrl+"&action=8");
-			version = answerParser.parseVersion(url.openStream());
-			
-			LOGGER.fine("getting name");
-			// the action 10 provides the name
-			url = new URL(baseUrl+"&action=10");
-			name = answerParser.parseName(url.openStream());
-			
-			LOGGER.fine("getting ears status");
-			updateEarsStatus();
-			
-			return true;
-			
-		} catch (MalformedURLException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		} catch (AnswerParsingException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		} catch (IOException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		}
-	}
-	
-	
-	/**
-	 * A way to only update the ears status
-	 */
-	public boolean updateEarsStatus() {
-		String baseUrl = String.format(this.baseFormat, NABAZTAG_API_URL,serialNumber,token);
+		LOGGER.fine("getting friends");
+		// the action 2 provides the list of friends
+		execute(new NabaztagInstructionSequence()
+				.addInstruction(RetrieveInfoInstruction.FRIENDS_LIST)
+				);
 		
-		try {
-			URL actionURL = new URL(baseUrl+"&ears=ok");
-			int[] earpos = answerParser.parseEarPosition(actionURL.openStream());
-			leftEarPos =  earpos[0];
-			rightEarPos = earpos[1];
-			return true;
-		} catch (AnswerParsingException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		} catch (IOException e) {
-			lastErrors = new LinkedList<ApiAnswer>();
-			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
-			return false;
-		}
+		LOGGER.fine("getting messages");
+		// the action 3 provides the list of messages
+		execute(new NabaztagInstructionSequence()
+				.addInstruction(RetrieveInfoInstruction.INBOX)
+				);
+		
+		LOGGER.fine("getting signature");
+		execute(new NabaztagInstructionSequence()
+				.addInstruction(RetrieveInfoInstruction.SIGNATURE)
+				);
+		
+		LOGGER.fine("getting awake state");
+		execute(new NabaztagInstructionSequence()
+				.addInstruction(RetrieveInfoInstruction.SLEEPING_STATUS)
+				);
+		
+		LOGGER.fine("getting version");
+		execute(new NabaztagInstructionSequence()
+				.addInstruction(RetrieveInfoInstruction.VERSION)
+		);			
+		
+		LOGGER.fine("getting name");
+		execute(new NabaztagInstructionSequence()
+				.addInstruction(RetrieveInfoInstruction.NAME)
+		);
+		
+		LOGGER.fine("getting ears status");
+		execute(new NabaztagInstructionSequence()
+			.addInstruction(new UpdateEarsInstruction())
+		);
+		
+		return true;		
 	}
+	
+
 
 	/**
-	 * @return the awake
+	 * @return the awake status
 	 */
 	public boolean isAwake() {
 		return awake;
+	}
+	
+	/**
+	 * Set the "awake" status of the Nabaztag
+	 * @param the awake
+	 */
+	public void setAwake(boolean awake) {
+		this.awake = awake;
 	}
 
 	/**
@@ -217,6 +194,13 @@ public class Nabaztag {
 	 */
 	public String getName() {
 		return name;
+	}
+	
+	/**
+	 * set the name
+	 */
+	public void setName(String name) {
+		this.name = name;
 	}
 
 	/**
@@ -243,7 +227,7 @@ public class Nabaztag {
 	/**
 	 * @return the friends
 	 */
-	public List<String> getFriends() {
+	public List<String> getFriends() {		
 		return friends;
 	}
 
@@ -262,17 +246,23 @@ public class Nabaztag {
 	}
 	
 	/**
-	 * Will awaken or shut down the nabaztag
-	 * @param awake
-	 * @return true if the command executed successfully
+	 * Set the version
+	 * @param
 	 */
-	public boolean setAwake(boolean awake) {
-		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
-		seq.add(new WakeUpInstruction(awake));	
-		this.execute(seq);
-		this.awake = awake;
-		return true;
+	public void setVersion(NabaztagVersion version) {
+		this.version = version;
 	}
+
+	public void setLeftEarPos(int leftEarPos) {
+		this.leftEarPos = leftEarPos;
+	}
+
+	public void setRightEarPos(int rightEarPos) {
+		this.rightEarPos = rightEarPos;
+	}
+	
+	
+
 
 	
 }
