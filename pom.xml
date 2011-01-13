@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.aggelos.nabaztag</groupId>
 	<artifactId>JNabaztag</artifactId>
-	<version>1.0.1</version>
+	<version>1.1-SNAPSHOT</version>
 	<name>Nabaztag API for Java</name>
 	<url>http://sinmaniphel.github.com/JNabaztag/</url>
 	<issueManagement>
