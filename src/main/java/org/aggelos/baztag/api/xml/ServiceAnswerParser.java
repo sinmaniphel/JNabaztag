@@ -24,6 +24,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.aggelos.baztag.api.Message;
+import org.aggelos.baztag.api.Nabaztag;
 import org.aggelos.baztag.api.NabaztagVersion;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
@@ -43,12 +44,22 @@ public class ServiceAnswerParser {
 	private XMLInputFactory inputFactory;
 	private static final String START_TAG = "rsp";
 	private static final String MESSAGE_TYPE_TAG = "message";
+	private static final String FRIEND_TYPE_TAG = "friend";
+	private static final String RABBIT_SLEEP_TYPE_TAG = "rabbitSleep";
+	private static final String RABBIT_VERSION_TYPE_TAG = "rabbitVersion";
+	private static final String RABBIT_NAME_TYPE_TAG = "rabbitName";
+	private static final String LEFT_POSITION_TYPE_TAG = "leftposition";
+	private static final String RIGHT_POSITION_TYPE_TAG = "rightposition";
+	private static final String LISTFRIEND_TYPE_TAG = "listfriend";
 	private static final String MESSAGE_COMMENT_TAG = "comment";
 	
 	private static final ResourceBundle errorsBundle = ResourceBundle.getBundle("apierrors");
 	
-	public ServiceAnswerParser() {
+	private Nabaztag model = null;
+	
+	public ServiceAnswerParser(Nabaztag model) {
 		inputFactory = XMLInputFactory.newInstance();
+		this.model = model;
 	}
 
 	
@@ -65,12 +76,10 @@ public class ServiceAnswerParser {
 		 */
 		XMLStreamReader reader = inputFactory.createXMLStreamReader(answer);
 		LinkedList<ApiAnswer> errorMessages = new LinkedList<ApiAnswer>();
-		boolean foundRsp = false;
 		while(reader.hasNext()) {
 			if(START_ELEMENT == reader.getEventType()) {
 				// the answer XML has no namespace so QName == localName
 				if(START_TAG.equals(reader.getLocalName())) {
-					foundRsp = true;
 					handleRsp(reader, errorMessages);
 				}
 			}
@@ -89,6 +98,34 @@ public class ServiceAnswerParser {
 				if(MESSAGE_TYPE_TAG.equals(reader.getLocalName())) {
 					handleMessage(reader, errorMessages);
 				}
+				if(FRIEND_TYPE_TAG.equals(reader.getLocalName())) {
+					model.getFriends().add(reader.getAttributeValue(null, "name"));
+				}
+				if(RABBIT_SLEEP_TYPE_TAG.equals(reader.getLocalName())){
+					String strIsSleeping = reader.getElementText();
+					model.setAwake(
+							!"YES".equals(strIsSleeping)
+						);
+				}
+				if(RABBIT_VERSION_TYPE_TAG.equals(reader.getLocalName())){
+					String strVersion = reader.getElementText();					
+					model.setVersion(NabaztagVersion.valueOf(strVersion));					
+				}
+				if(RABBIT_NAME_TYPE_TAG.equals(reader.getLocalName())){
+					String strName = reader.getElementText();					
+					model.setName(strName);					
+				}
+				if(LEFT_POSITION_TYPE_TAG.equals(reader.getLocalName())) {
+					String sig = reader.getElementText();
+					model.setLeftEarPos(Integer.parseInt(sig));
+					
+				}
+				if(RIGHT_POSITION_TYPE_TAG.equals(reader.getLocalName())) {
+					String sig = reader.getElementText();
+					model.setRightEarPos(Integer.parseInt(sig));
+					
+				}
+				
 			}
 			if(END_ELEMENT == reader.getEventType()) {
 				if(START_TAG.equals(reader.getLocalName())) {
@@ -160,44 +197,6 @@ public class ServiceAnswerParser {
 	
 	private ApiAnswer generateAnswer(ApiAnswers ans) {
 		return new ApiAnswer(ans,errorsBundle.getString(ans.toString()));
-	}
-	
-	
-	/**
-	 * @param is which should normaly be the api URL with action 2 
-	 * @return the list of friends
-	 * @throws AnswerParsingException 
-	 */
-	public List<String> parseFriends(InputStream is) throws AnswerParsingException {
-		try {
-			XMLStreamReader reader = inputFactory.createXMLStreamReader(is);
-			
-			/*
-			 * The format is the following 
-			 * 
-			 * <?xml version="1.0" encoding="UTF-8"?>
-				<rsp>
-				<listfriend nb="1"/>
-				<friend name="toto"/>
-				</rsp>
-			 * We'll simplify, considering that the rsp tag is just well a placeholder, 
-			 * and focus directly on the list of friends
-			 */
-			LinkedList<String> friends = new LinkedList<String>();
-			
-			while(reader.hasNext()) {
-				if(START_ELEMENT == reader.getEventType() && "friend".equals(reader.getLocalName())) {
-					friends.add(reader.getAttributeValue(null, "name"));
-				}
-				reader.next();
-			}
-			reader.close();
-			return friends;
-		} catch (XMLStreamException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		}
-		
 	}
 
 
@@ -301,157 +300,6 @@ public class ServiceAnswerParser {
 			throw new AnswerParsingException(e);
 		}
 		
-	}
-
-	/**
-	 * @param is which should normaly be the api URL with action 7
-	 * @return the awake state of the Nabaztag
-	 * @throws AnswerParsingException 
-	 */
-	public boolean parseAwake(InputStream openStream) throws AnswerParsingException {
-		try {
-			XMLStreamReader reader = inputFactory.createXMLStreamReader(openStream);
-			
-			/*
-			 * Spec is
-			 * <?xml version="1.0" encoding="UTF-8"?>
-				<rsp>
-				<rabbitSleep>YES</rabbitSleep>
-				</rsp>
-			 * pretty straightforward
-			 */
-			
-			while(reader.hasNext()) {
-				if(START_ELEMENT == reader.getEventType() && "rabbitSleep".equals(reader.getLocalName())) {
-					String sig = reader.getElementText();
-					reader.close();
-					return !"YES".equals(sig);
-				}
-				reader.next();
-			}
-			throw new AnswerParsingException("Did not find sleep state while parsing the signature URL");
-		} catch (XMLStreamException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		}
-	}
-
-
-	/**
-	 * @param is which should normaly be the api URL with action 8
-	 * @return the version of the Nabaztag
-	 * @throws AnswerParsingException 
-	 */
-	public NabaztagVersion parseVersion(InputStream openStream) throws AnswerParsingException {
-		try {
-			XMLStreamReader reader = inputFactory.createXMLStreamReader(openStream);
-			
-			/*
-			 * Spec is
-			 * <?xml version="1.0" encoding="UTF-8"?>
-				<rsp>
-				<rabbitVersion>V1</rabbitVersion>
-				</rsp>
-			 * pretty straightforward
-			 */
-			
-			while(reader.hasNext()) {
-				if(START_ELEMENT == reader.getEventType() && "rabbitVersion".equals(reader.getLocalName())) {
-					String sig = reader.getElementText();
-					reader.close();
-					return NabaztagVersion.valueOf(sig);
-				}
-				reader.next();
-			}
-			throw new AnswerParsingException("Did not find a version while parsing the signature URL");
-		} catch (XMLStreamException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		}
-	}
-
-
-	/**
-	 * @param is which should normaly be the api URL with action 10
-	 * @return the name of the Nabaztag
-	 * @throws AnswerParsingException 
-	 */
-	public String parseName(InputStream openStream) throws AnswerParsingException {
-		try {
-			XMLStreamReader reader = inputFactory.createXMLStreamReader(openStream);
-			
-			/*
-			 * Spec is
-			 * <?xml version="1.0" encoding="UTF-8"?>
-				<rsp>
-				<rabbitName>nabmaster</rabbitName>
-				</rsp>
-			 * pretty straightforward
-			 */
-			
-			while(reader.hasNext()) {
-				if(START_ELEMENT == reader.getEventType() && "rabbitName".equals(reader.getLocalName())) {
-					String sig = reader.getElementText();
-					reader.close();
-					return sig;
-				}
-				reader.next();
-			}
-			throw new AnswerParsingException("Did not find a name while parsing the signature URL");
-		} catch (XMLStreamException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		}
-	}
-	
-	/**
-	 * @param is which should normaly be the api URL the earpos param
-	 * @return the position of both ears, left first
-	 * @throws AnswerParsingException 
-	 */
-	public int[] parseEarPosition(InputStream openStream) throws AnswerParsingException {
-		try {
-			XMLStreamReader reader = inputFactory.createXMLStreamReader(openStream);
-			
-			/*
-			 * Spec is
-			 *<?xml version="1.0" encoding="UTF-8"?>
-				<rsp>
-				<message>POSITIONEAR</message>
-				<leftposition>8</leftposition>
-				<rightposition>10</rightposition>
-				</rsp>
-			 * pretty straightforward
-			 */
-			int leftear = -1;
-			int rightear = -1;
-			while(reader.hasNext()) {
-				if(START_ELEMENT == reader.getEventType() && "leftposition".equals(reader.getLocalName())) {
-					String sig = reader.getElementText();
-					leftear = Integer.parseInt(sig);
-					
-				}
-				if(START_ELEMENT == reader.getEventType() && "rightposition".equals(reader.getLocalName())) {
-					String sig = reader.getElementText();
-					rightear = Integer.parseInt(sig);
-					
-				}
-				reader.next();
-			}
-			reader.close();
-			if(leftear == -1 || rightear == -1 ) {
-				throw new AnswerParsingException("Could not find a position for both ears");
-			}
-			int[] ret = new int[2];
-			ret[0] = leftear;
-			ret[1] = rightear;
-			return ret;
-		} catch (XMLStreamException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		}
-	}
-	
-	
+	}	
 	
 }
