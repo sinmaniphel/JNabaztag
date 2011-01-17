@@ -12,8 +12,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.aggelos.baztag.api.inst.RetrieveInfoInstruction;
 import org.aggelos.baztag.api.inst.UpdateEarsInstruction;
-import org.aggelos.baztag.api.inst.WakeUpInstruction;
-import org.aggelos.baztag.api.xml.AnswerParsingException;
+import org.aggelos.baztag.api.inst.streaming.StreamInstructionSequence;
 import org.aggelos.baztag.api.xml.ApiAnswer;
 import org.aggelos.baztag.api.xml.ServiceAnswerParser;
 
@@ -34,6 +33,7 @@ import org.aggelos.baztag.api.xml.ServiceAnswerParser;
 public class Nabaztag {
 
 	public static final String NABAZTAG_API_URL = "http://api.nabaztag.com/vl/FR/api.jsp";
+	public static final String NABAZTAG_STREAM_API_URL = "http://api.nabaztag.com/vl/FR/api_stream.jsp";
 	public static final String baseFormat = "%1$s?sn=%2$s&token=%3$s";
 	
 	private static final Logger LOGGER = Logger.getLogger(Nabaztag.class.getName());
@@ -62,6 +62,9 @@ public class Nabaztag {
 	
 	private NabaztagVersion version;
 	
+	private NabaztagInstructionSequence sequence = new NabaztagInstructionSequence();
+	private StreamInstructionSequence playlist = new StreamInstructionSequence();
+	
 	
 		
 	
@@ -81,11 +84,49 @@ public class Nabaztag {
 	}
 	
 	/**
-	 * This method will execute a sequence of instructions, for example saying something and moving the ears
-	 * @param sequence your built {@link NabaztagInstructionSequence}
+	 * This method call the Stream API execute a sequence of instructions 
 	 */
-	public boolean execute(NabaztagInstructionSequence sequence) {
-		String baseUrl = String.format(this.baseFormat, NABAZTAG_API_URL,serialNumber,token);
+	public boolean play() {
+		String baseUrl = String.format(baseFormat, NABAZTAG_STREAM_API_URL,serialNumber,token);
+		
+		String fullUrl = baseUrl+playlist.toParamUrl();
+		System.out.println(fullUrl);
+		
+		try {
+			URL url = new URL(fullUrl);
+			
+			List<ApiAnswer> result = answerParser.parse(url.openStream());
+			if(result.size() == 0) {
+				return true;
+			}
+			else {
+				lastErrors = result;
+				return false;
+			}			
+		
+		} catch (MalformedURLException e) {
+			lastErrors = new LinkedList<ApiAnswer>();
+			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
+			return false;
+		} catch (IOException e) {
+			lastErrors = new LinkedList<ApiAnswer>();
+			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
+			return false;
+		} catch (XMLStreamException e) {
+			lastErrors = new LinkedList<ApiAnswer>();
+			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
+			return false;
+		}finally{
+			playlist.clear();
+		}
+
+	}
+	
+	/**
+	 * This method will execute a sequence of instructions, for example saying something and moving the ears 
+	 */
+	public boolean execute() {
+		String baseUrl = String.format(baseFormat, NABAZTAG_API_URL,serialNumber,token);
 		
 		String fullUrl = baseUrl+sequence.toParamUrl();
 		System.out.println(fullUrl);
@@ -100,7 +141,7 @@ public class Nabaztag {
 			else {
 				lastErrors = result;
 				return false;
-			}
+			}			
 		
 		} catch (MalformedURLException e) {
 			lastErrors = new LinkedList<ApiAnswer>();
@@ -114,6 +155,8 @@ public class Nabaztag {
 			lastErrors = new LinkedList<ApiAnswer>();
 			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
 			return false;
+		}finally{
+			sequence.clear();
 		}
 
 	}
@@ -134,40 +177,33 @@ public class Nabaztag {
 			
 		LOGGER.fine("getting friends");
 		// the action 2 provides the list of friends
-		execute(new NabaztagInstructionSequence()
-				.addInstruction(RetrieveInfoInstruction.FRIENDS_LIST)
-				);
+		addInstruction(RetrieveInfoInstruction.FRIENDS_LIST);
+		execute();
 		
 		LOGGER.fine("getting messages");
 		// the action 3 provides the list of messages
-		execute(new NabaztagInstructionSequence()
-				.addInstruction(RetrieveInfoInstruction.INBOX)
-				);
+		addInstruction(RetrieveInfoInstruction.INBOX);
+		execute();
 		
-		LOGGER.fine("getting signature");
-		execute(new NabaztagInstructionSequence()
-				.addInstruction(RetrieveInfoInstruction.SIGNATURE)
-				);
+		LOGGER.fine("getting signature");		
+		addInstruction(RetrieveInfoInstruction.SIGNATURE);		
+		execute();
 		
 		LOGGER.fine("getting awake state");
-		execute(new NabaztagInstructionSequence()
-				.addInstruction(RetrieveInfoInstruction.SLEEPING_STATUS)
-				);
+		addInstruction(RetrieveInfoInstruction.SLEEPING_STATUS);
+		execute();
 		
 		LOGGER.fine("getting version");
-		execute(new NabaztagInstructionSequence()
-				.addInstruction(RetrieveInfoInstruction.VERSION)
-		);			
+		addInstruction(RetrieveInfoInstruction.VERSION);
+		execute();			
 		
 		LOGGER.fine("getting name");
-		execute(new NabaztagInstructionSequence()
-				.addInstruction(RetrieveInfoInstruction.NAME)
-		);
+		addInstruction(RetrieveInfoInstruction.NAME);
+		execute();
 		
 		LOGGER.fine("getting ears status");
-		execute(new NabaztagInstructionSequence()
-			.addInstruction(new UpdateEarsInstruction())
-		);
+		addInstruction(new UpdateEarsInstruction());
+		execute();
 		
 		return true;		
 	}
@@ -259,8 +295,44 @@ public class Nabaztag {
 
 	public void setRightEarPos(int rightEarPos) {
 		this.rightEarPos = rightEarPos;
+	}	
+	
+	public NabaztagInstructionSequence getSequence() {
+		return sequence;
+	}
+
+	/**
+	 * method that allow convenient syntax like: <br/>
+	 * <pre> 
+	 * nab
+	 * 		.addInstruction(new LeftEarInstruction(10))
+	 *		.addInstruction(new RightEarInstruction(10))
+	 *		.addInstruction(new TextInstruction("say hoho"))
+	 *		.execute();
+	 * </pre>
+	 * @param inst
+	 * @return
+	 */
+	public Nabaztag addInstruction(NabaztagInstruction inst){
+		sequence.add(inst);
+		return this;
 	}
 	
+	/**
+	 * method that allow convenient syntax like: <br/>
+	 * <pre> 
+	 * nab
+	 * 		.addStream(new OnlineStreamInstruction(new URL("http://my.server.org/music.mp3"))
+	 *		.addStream(new OnlineStreamInstruction("http://my.server.org/music.mp2"))
+	 *		.play();
+	 * </pre>
+	 * @param inst
+	 * @return
+	 */
+	public Nabaztag addStream(StreamInstruction inst){
+		playlist.add(inst);
+		return this;
+	}
 	
 
 
