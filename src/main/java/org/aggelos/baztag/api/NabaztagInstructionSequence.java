@@ -27,11 +27,5 @@ public class NabaztagInstructionSequence extends HashSet<NabaztagInstruction> {
 			outBuf.append(ni.getParamValue());
 		}
 		return outBuf.toString();
-	}
-	
-	public NabaztagInstructionSequence addInstruction(NabaztagInstruction inst){
-		super.add(inst);
-		return this;
-	}
-	
+	}	
 }
