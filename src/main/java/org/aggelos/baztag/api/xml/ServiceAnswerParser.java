@@ -177,6 +177,9 @@ public class ServiceAnswerParser {
 		case NOGOODTOKENORSERIAL:
 			errorMessages.add(generateAnswer(ansType));
 			break;
+		case NOGOODSERIAL:
+			errorMessages.add(generateAnswer(ansType));
+			break;
 		case NOTV2RABBIT:
 			errorMessages.add(generateAnswer(ansType));
 			break;
