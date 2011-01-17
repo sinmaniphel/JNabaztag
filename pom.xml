@@ -20,6 +20,15 @@
 				<role>Lead developper</role>
 			</roles>
 		</developer>
+		<developer>
+			<id>tvibes</id>
+			<name>Thibaud Vibes</name>
+			<email>tvibes at onyme.com</email>
+			<url>http://twitter.com/thibaudvibes</url>
+			<roles>
+				<role>developper</role>
+			</roles>			
+		</developer>		
 	</developers>
 	<scm>
 		<url>https://github.com/sinmaniphel/JNabaztag</url>
