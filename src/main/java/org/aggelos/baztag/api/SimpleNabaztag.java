@@ -42,14 +42,13 @@ public class SimpleNabaztag extends Nabaztag {
 	 * @param voice
 	 * @return
 	 */
-	public boolean say(String message, String voice) {
-		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
+	public boolean say(String message, String voice) {		
 		TextInstruction ti = new TextInstruction(message);
-		seq.add(ti);
+		addInstruction(ti);
 		if(voice !=null)
-			seq.add(new VoiceInstruction(voice));
+			addInstruction(new VoiceInstruction(voice));
 		
-		return execute(seq);
+		return execute();
 	}
 	
 	/**
@@ -58,10 +57,9 @@ public class SimpleNabaztag extends Nabaztag {
 	 * @return
 	 */
 	public boolean moveLeftEar(int position) {
-		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
 		LeftEarInstruction lei = new LeftEarInstruction((short)position);
-		seq.add(lei);
-		return execute(seq);
+		addInstruction(lei);
+		return execute();
 	}
 	
 	/**
@@ -70,10 +68,9 @@ public class SimpleNabaztag extends Nabaztag {
 	 * @return
 	 */
 	public boolean moveRightEar(int position) {
-		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
 		RightEarInstruction lei = new RightEarInstruction((short)position);
-		seq.add(lei);
-		return execute(seq);
+		addInstruction(lei);
+		return execute();
 	}
 	
 	/**
@@ -82,9 +79,8 @@ public class SimpleNabaztag extends Nabaztag {
 	 * 		TRUE if the instruction was successfully sent
 	 */
 	public boolean sleep() {
-		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
-		seq.add(new WakeUpInstruction(false));	
-		return this.execute(seq);		
+		addInstruction(new WakeUpInstruction(false));	
+		return this.execute();		
 	}
 	
 	/**
@@ -93,9 +89,8 @@ public class SimpleNabaztag extends Nabaztag {
 	 * 		TRUE if the instruction was successfully sent
 	 */
 	public boolean awake() {
-		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
-		seq.add(new WakeUpInstruction(true));	
-		return this.execute(seq);
+		addInstruction(new WakeUpInstruction(true));	
+		return this.execute();
 	}
 
 }
