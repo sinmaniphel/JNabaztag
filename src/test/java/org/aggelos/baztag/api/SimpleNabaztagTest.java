@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.util.ResourceBundle;
 
 import org.aggelos.baztag.api.parts.Lang;
+import org.aggelos.baztag.api.xml.ApiAnswer;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,5 +43,37 @@ public class SimpleNabaztagTest {
 		assertTrue(tag.moveRightEar(10));
 		assertFalse(tag.moveRightEar(25));
 	}
+	
+	@Test
+	public void testSleep() {
+		boolean update = tag.updateStatus();
+		if(!update) {
+			for(ApiAnswer answer:tag.getLastErrors()) {
+				System.out.println(answer.getMessage());
+			}
+		}
+		assertTrue(update);
+				
+		assertTrue(tag.sleep());
+		assertTrue("Ton Nabaztag devrait être endormi!!",!tag.isAwake());
+			
+	}
+	
+	@Test
+	public void testAwake() {
+		boolean update = tag.updateStatus();
+		if(!update) {
+			for(ApiAnswer answer:tag.getLastErrors()) {
+				System.out.println(answer.getMessage());
+			}
+		}
+		assertTrue(update);
+		
+		
+		assertTrue(tag.awake());
+		assertTrue("Ton Nabaztag devrait être réveillé!!",tag.isAwake());
+	}
+	
+	
 
 }

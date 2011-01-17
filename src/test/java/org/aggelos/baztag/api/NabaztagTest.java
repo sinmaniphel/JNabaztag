@@ -29,8 +29,8 @@ public class NabaztagTest extends TestCase {
 	}
 	
 	public void testExecute() {
-		TextInstruction ti = new TextInstruction("je peux écrire un peu ce que je veux");
-		TextInstruction ti2 = new TextInstruction("et même lui faire dire des bétises");
+		TextInstruction ti = new TextInstruction("Ceci est un test unitaire!");
+		TextInstruction ti2 = new TextInstruction("Le Java c'est quand mÃªme mieux que le PHP");
 		ChoregraphyInstruction ci = new ChoregraphyInstruction(1);
 		LeftEarInstruction lei = new LeftEarInstruction((short)10);
 		RightEarInstruction rei = new RightEarInstruction((short)2);
@@ -55,20 +55,19 @@ public class NabaztagTest extends TestCase {
 		ci.addStep(s7);
 		ci.addStep(s8);
 		
+		tag.addInstruction(ti);
+		tag.addInstruction(ti2);
+		tag.addInstruction(ci);
+		tag.addInstruction(rei);
+		tag.addInstruction(lei);
 		
-		NabaztagInstructionSequence seq = new NabaztagInstructionSequence();
-		seq.add(ti);
-		seq.add(ti2);
-		seq.add(ci);
-		seq.add(rei);
-		seq.add(lei);
+		assertTrue(tag.execute());
+		assertTrue("The sequence was not cleared", tag.getSequence().size() == 0);
 		
-		assertTrue(tag.execute(seq));
-		seq = new NabaztagInstructionSequence();
 		rei = new RightEarInstruction((short)24);
-		seq.add(rei);
-		seq.add(lei);
-		assertFalse(tag.execute(seq));
+		tag.addInstruction(rei);
+		tag.addInstruction(lei);
+		assertFalse(tag.execute());
 		List<ApiAnswer> messages = tag.getLastErrors();
 		assertEquals(1,messages.size());
 		assertEquals(messages.get(0).getAnswertype(), ApiAnswers.EARPOSITIONNOTSENT);
@@ -99,18 +98,6 @@ public class NabaztagTest extends TestCase {
 		for(String friend:tag.getFriends()) {
 			System.out.println("\t"+friend);
 		}
-	}
-	
-	public void testAwake() {
-		boolean update = tag.updateStatus();
-		if(!update) {
-			for(ApiAnswer answer:tag.getLastErrors()) {
-				System.out.println(answer.getMessage());
-			}
-		}
-		assertTrue(update);
-		boolean awake = tag.isAwake();
-		assertTrue(tag.setAwake(!awake));
 	}
 
 }
