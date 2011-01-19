@@ -8,11 +8,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 
-import javax.xml.stream.XMLStreamException;
-
 import org.aggelos.baztag.api.inst.RetrieveInfoInstruction;
 import org.aggelos.baztag.api.inst.UpdateEarsInstruction;
 import org.aggelos.baztag.api.inst.streaming.StreamInstructionSequence;
+import org.aggelos.baztag.api.xml.AnswerParsingException;
 import org.aggelos.baztag.api.xml.ApiAnswer;
 import org.aggelos.baztag.api.xml.ServiceAnswerParser;
 
@@ -114,7 +113,7 @@ public class Nabaztag {
 			lastErrors = new LinkedList<ApiAnswer>();
 			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
 			return false;
-		} catch (XMLStreamException e) {
+		} catch (AnswerParsingException e) {
 			lastErrors = new LinkedList<ApiAnswer>();
 			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
 			return false;
@@ -128,6 +127,7 @@ public class Nabaztag {
 	 * This method will execute a sequence of instructions, for example saying something and moving the ears 
 	 */
 	public boolean execute() {
+		boolean executionOk = false;
 		String baseUrl = String.format(baseFormat, NABAZTAG_API_URL,serialNumber,token);
 		
 		String fullUrl = baseUrl+sequence.toParamUrl();
@@ -138,11 +138,10 @@ public class Nabaztag {
 			
 			List<ApiAnswer> result = answerParser.parse(url.openStream());
 			if(result.size() == 0) {
-				return true;
+				executionOk = true;
 			}
 			else {
-				lastErrors = result;
-				return false;
+				lastErrors = result;				
 			}			
 		
 		} catch (MalformedURLException e) {
@@ -153,14 +152,15 @@ public class Nabaztag {
 			lastErrors = new LinkedList<ApiAnswer>();
 			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
 			return false;
-		} catch (XMLStreamException e) {
+		} catch (AnswerParsingException e) {
 			lastErrors = new LinkedList<ApiAnswer>();
 			lastErrors.add(new ApiAnswer(null, e.getLocalizedMessage()));
 			return false;
 		}finally{
 			sequence.clear();
-		}
-
+		}	
+		
+		return executionOk;
 	}
 
 
@@ -246,6 +246,13 @@ public class Nabaztag {
 	 */
 	public String getSignature() {
 		return signature;
+	}
+	
+	/**
+	 * set the signature
+	 */
+	public void setSignature(String sig) {
+		signature = sig;
 	}
 
 	/**
