@@ -85,6 +85,8 @@ public class Nabaztag {
 	
 	/**
 	 * This method call the Stream API execute a sequence of instructions 
+	 * @todo
+	 * 		implements a stop() method (when i will find a convenient method to stop to read a stream)
 	 */
 	public boolean play() {
 		String baseUrl = String.format(baseFormat, NABAZTAG_STREAM_API_URL,serialNumber,token);
