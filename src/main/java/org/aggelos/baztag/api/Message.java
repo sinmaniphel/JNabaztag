@@ -47,6 +47,12 @@ public class Message {
 		this.date = date;
 		this.url = url;
 	}
+
+	@Override
+	public String toString() {		
+		return "Message[from="+from+";title="+title+";date="+date+";url="+date+"]";
+	}
+	
 	
 	
 	
