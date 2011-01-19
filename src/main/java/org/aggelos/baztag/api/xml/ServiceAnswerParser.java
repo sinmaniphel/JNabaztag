@@ -1,37 +1,20 @@
 package org.aggelos.baztag.api.xml;
 
-import java.io.IOException;
+import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
+import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
+
 import java.io.InputStream;
-import java.io.StringWriter;
-import java.security.KeyStore.Builder;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ResourceBundle;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
-import javax.xml.stream.XMLStreamWriter;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.TransformerFactoryConfigurationError;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.aggelos.baztag.api.Message;
 import org.aggelos.baztag.api.Nabaztag;
 import org.aggelos.baztag.api.NabaztagVersion;
-import org.w3c.dom.DOMException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.xml.sax.SAXException;
-
-import static javax.xml.stream.XMLStreamConstants.*;
 
 /**
  * The purpose of this class is to handle the answer of the API which will usually be 
@@ -50,6 +33,9 @@ public class ServiceAnswerParser {
 	private static final String RABBIT_NAME_TYPE_TAG = "rabbitName";
 	private static final String LEFT_POSITION_TYPE_TAG = "leftposition";
 	private static final String RIGHT_POSITION_TYPE_TAG = "rightposition";
+	private static final String SIGNATURE_TAG = "signature";
+	private static final String EMBED_SIGNATURE_TAG = "embed";
+	private static final String MESSAGE_TAG = "msg";
 	private static final String LISTFRIEND_TYPE_TAG = "listfriend";
 	private static final String MESSAGE_COMMENT_TAG = "comment";
 	
@@ -69,23 +55,35 @@ public class ServiceAnswerParser {
 	 * @return a list of errors
 	 * @throws XMLStreamException
 	 */
-	public LinkedList<ApiAnswer> parse(InputStream answer) throws XMLStreamException  {
+	public LinkedList<ApiAnswer> parse(InputStream answer) throws AnswerParsingException  {
 		/*
 		 * Going for a StAX implementation, far easier, serves many purposes, while being fast and efficient
 		 * May pose compatibility issues
 		 */
-		XMLStreamReader reader = inputFactory.createXMLStreamReader(answer);
 		LinkedList<ApiAnswer> errorMessages = new LinkedList<ApiAnswer>();
-		while(reader.hasNext()) {
-			if(START_ELEMENT == reader.getEventType()) {
-				// the answer XML has no namespace so QName == localName
-				if(START_TAG.equals(reader.getLocalName())) {
-					handleRsp(reader, errorMessages);
+		XMLStreamReader reader = null;
+		try{
+			reader = inputFactory.createXMLStreamReader(answer);
+			
+			while(reader.hasNext()) {
+				if(START_ELEMENT == reader.getEventType()) {
+					// the answer XML has no namespace so QName == localName
+					if(START_TAG.equals(reader.getLocalName())) {
+						handleRsp(reader, errorMessages);
+					}
 				}
+				reader.next();
 			}
-			reader.next();
+		}catch(XMLStreamException xe){
+			throw new AnswerParsingException(xe);
+		}finally{
+			if(reader!=null)
+				try {
+					reader.close();
+				} catch (XMLStreamException e) {
+					throw new AnswerParsingException(e);
+				}
 		}
-		reader.close();
 		return errorMessages;
 		
 		
@@ -124,6 +122,17 @@ public class ServiceAnswerParser {
 					String sig = reader.getElementText();
 					model.setRightEarPos(Integer.parseInt(sig));
 					
+				}
+				if(SIGNATURE_TAG.equals(reader.getLocalName())) {
+					String sig = handleSignature(reader, errorMessages);
+					model.setSignature(sig);
+					return;
+				}
+				if(MESSAGE_TAG.equals(reader.getLocalName())) {					
+					model.getMessages().addAll(
+							handleInbox(reader, errorMessages)
+						);
+					return;
 				}
 				
 			}
@@ -208,101 +217,50 @@ public class ServiceAnswerParser {
 	 * @return the list of messages
 	 * @throws AnswerParsingException 
 	 */
-	public List<Message> parseMessages(InputStream openStream) throws AnswerParsingException {
-		try {
-			XMLStreamReader reader = inputFactory.createXMLStreamReader(openStream);
-			
-			/*
-			 * According to doc, the content is like follows
-			 * <?xml version="1.0" encoding="UTF-8"?>
-				<rsp>
-				<listreceivedmsg nb="1"/>
-				<msg from="toto" title="my message" date="today 11:59" url="broad/001/948.mp3"/>
-				</rsp>
-			 *Let's simplify and handle only the msg tags
-			 */
-			LinkedList<Message> messages = new LinkedList<Message>();
-			while(reader.hasNext()) {
-				if(START_ELEMENT == reader.getEventType() && "msg".equals(reader.getLocalName())) {
-					String from = reader.getAttributeValue(null, "from");
-					String title = reader.getAttributeValue(null, "title");
-					String date = reader.getAttributeValue(null, "date");
-					String url = reader.getAttributeValue(null, "url");
-					messages.add(new Message(from, title, date, url));
-				}
-				reader.next();
+	private List<Message> handleInbox(XMLStreamReader reader, LinkedList<ApiAnswer> errorMessages) throws XMLStreamException {
+		LinkedList<Message> messages = new LinkedList<Message>();
+		while(reader.hasNext()) {
+			if(START_ELEMENT == reader.getEventType()) {
+				String from = reader.getAttributeValue(null, "from");
+				String title = reader.getAttributeValue(null, "title");
+				String date = reader.getAttributeValue(null, "date");
+				String url = reader.getAttributeValue(null, "url");
+				messages.add(new Message(from, title, date, url));
 			}
-			reader.close();
-			return messages;
-		} catch (XMLStreamException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
+			reader.next();
 		}
+		return messages;
 	}
 
 
 	/**
-	 * @param is which should normaly be the api URL with action 5
-	 * @return the signature of the nabaztag, a HTML content
-	 * @throws AnswerParsingException 
+	 * @param reader
+	 * 		xml stream reader. Should be positionning on the "signature" start tag
+	 * @param errorMessages
+	 * 		
+	 * @return
+	 * 		The "signature" inner text return by the API
+	 * @throws XMLStreamException
 	 */
-	public String parseSignature(InputStream openStream) throws AnswerParsingException {
-			
-			/*
-			 * Spec is
-			 * <?xml version="1.0" encoding="UTF-8"?>
-				<rsp>
-				<signature>XXXXX</signature>
-				</rsp>
-			 * Not straightforward since the signature is HTML content
-			 * Therefore using DOM
-			 */
-		
-		try {
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			Document sigDoc = builder.parse(openStream);
-			
-			// going straight to signature
-			Node sigNode = sigDoc.getDocumentElement().getFirstChild();
-			
-			Document target = builder.newDocument();
-			target.adoptNode(sigNode);
-			target.appendChild(sigNode);
-			
-			DOMSource domSource = new DOMSource(target);
-			StringWriter writer = new StringWriter();
-			StreamResult result = new StreamResult(writer);
-			TransformerFactory tf = TransformerFactory.newInstance();
-			Transformer transformer = tf.newTransformer();
-			transformer.transform(domSource, result);
-			writer.flush();
-			String stringResult = writer.toString(); 
-			writer.close();
-			
-			return stringResult.replace("<signature>", "").replace("</signature>", "").replace("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>", "");
-		} catch (DOMException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		} catch (TransformerConfigurationException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		} catch (ParserConfigurationException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		} catch (SAXException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		} catch (IOException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		} catch (TransformerFactoryConfigurationError e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
-		} catch (TransformerException e) {
-			// encapsulate the error, throw back;
-			throw new AnswerParsingException(e);
+	private String handleSignature(XMLStreamReader reader, LinkedList<ApiAnswer> errorMessages) throws XMLStreamException{		
+		StringBuilder signature = new StringBuilder();
+		if(reader.hasNext()) {
+			reader.next();
+			if(START_ELEMENT == reader.getEventType() && EMBED_SIGNATURE_TAG.equals(reader.getLocalName())) {				
+				//hack - we cannot directly extract the inner xml of the <signature /> so
+				//we read all attributes and append them in a StringBuilder
+				signature.append("<" + EMBED_SIGNATURE_TAG + " ");		
+				for(int i=0; i<reader.getAttributeCount(); i++){
+					signature.append(reader.getAttributeLocalName(i) + "=\"" + reader.getAttributeValue(i) + "\" ");
+				}				
+				signature.append("/>");				
+			}			
 		}
 		
+		if(signature.length()>0)
+			return signature.toString();
+		
+		return null;
 	}	
 	
 }
