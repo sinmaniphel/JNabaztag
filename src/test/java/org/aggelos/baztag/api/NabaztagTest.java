@@ -1,12 +1,20 @@
 package org.aggelos.baztag.api;
 
+import static org.aggelos.baztag.api.parts.NabaztagLed.LEFT;
+import static org.aggelos.baztag.api.parts.NabaztagLed.MIDDLE;
+import static org.aggelos.baztag.api.parts.NabaztagLed.RIGHT;
+import static org.aggelos.baztag.api.parts.NabaztagLed.TOP;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
 import org.aggelos.baztag.api.inst.LeftEarInstruction;
-import org.aggelos.baztag.api.inst.RetrieveInfoInstruction;
 import org.aggelos.baztag.api.inst.RightEarInstruction;
 import org.aggelos.baztag.api.inst.TextInstruction;
 import org.aggelos.baztag.api.inst.VoiceInstruction;
@@ -16,25 +24,39 @@ import org.aggelos.baztag.api.inst.streaming.OnlineStreamInstruction;
 import org.aggelos.baztag.api.parts.Lang;
 import org.aggelos.baztag.api.xml.ApiAnswer;
 import org.aggelos.baztag.api.xml.ApiAnswers;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
-import static org.aggelos.baztag.api.parts.NabaztagLed.*;
 
-import junit.framework.TestCase;
-
-public class NabaztagTest extends TestCase {
+public class NabaztagTest{
 	//Radio FIP - playing some Jazz
 	private static String webradioTestUrl = "http://mp3.live.tv-radio.com/fip/all/fip-32k.mp3";
 	
-	private Nabaztag tag;	
+	private static Nabaztag tag;	
 	
-	@Override
-	protected void setUp() throws Exception {
+	@BeforeClass
+	public static void setUp() throws Exception {
 		ResourceBundle props = ResourceBundle.getBundle("apitest");
 		String sn = props.getString("test.api.sn");
 		String token = props.getString("test.api.token");
 		tag = new Nabaztag(sn, token);
 	}
 	
+	/**
+	 * Introduce a delay between each test to not overload the API
+	 */
+	@Before
+	public void pauseBetweenTest(){
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	@Test
 	public void testExecute() {
 		TextInstruction ti = new TextInstruction("Ceci est un test unitaire!");
 		TextInstruction ti2 = new TextInstruction("Le Java c'est quand même mieux que le PHP");
@@ -89,6 +111,7 @@ public class NabaztagTest extends TestCase {
 		
 	}
 	
+	@Test
 	public void testUpdateStatus() {
 		System.out.println("updating status");
 		boolean update = tag.updateStatus();
@@ -119,7 +142,7 @@ public class NabaztagTest extends TestCase {
 		}
 	}
 	
-	
+	@Test
 	public void testPlay() {
 		
 		try {
